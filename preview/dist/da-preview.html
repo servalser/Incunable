@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incunable — DA « La Une » (preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400;1,6..96,500&family=Hanken+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Tokens (OKLCH) ─────────────────────────────────────────────────────── */
+:root {
+    /* Surfaces — papier chaud teinté vers le brun de la marque */
+    --paper:          oklch(93% 0.022 82);
+    --paper-2:        oklch(90% 0.025 80);
+    --paper-3:        oklch(87% 0.026 78);
+    /* Encre */
+    --ink:            oklch(14% 0.010 56);
+    --ink-2:          oklch(23% 0.014 58);
+    --muted:          oklch(44% 0.018 64);
+    --muted-2:        oklch(57% 0.015 66);
+    /* Traits */
+    --hairline:       oklch(14% 0.010 56 / 0.11);
+    --hairline-strong:oklch(14% 0.010 56 / 0.20);
+    /* Statuts sémantiques */
+    --overdue:        oklch(36% 0.102 22);
+    --overdue-bg:     oklch(93% 0.018 22);
+    --overdue-mid:    oklch(82% 0.04  22);
+    --pending:        oklch(50% 0.082 67);
+    --pending-bg:     oklch(93% 0.020 75);
+    --pending-mid:    oklch(83% 0.04  72);
+    --paid:           oklch(44% 0.072 152);
+    --paid-bg:        oklch(93% 0.020 152);
+    --info:           oklch(44% 0.078 243);
+    --info-bg:        oklch(93% 0.018 240);
+    /* Sidebar */
+    --sidebar-bg:     oklch(9% 0.010 58);
+    --sidebar-fg:     oklch(78% 0.020 72);
+    --sidebar-muted:  oklch(46% 0.014 64);
+    --sidebar-active: oklch(93% 0.022 82);
+    /* Typo */
+    --mono:           'JetBrains Mono', 'Cascadia Code', monospace;
+    --serif:          'Bodoni Moda', 'Didot', Georgia, serif;
+    --sans:           'Hanken Grotesk', system-ui, sans-serif;
+    /* Radii */
+    --r:              4px;
+    --r-md:           6px;
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+html, body { height: 100%; }
+body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+.app {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ─── Overlay (mobile menu backdrop) ─────────────────────────────────────── */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: oklch(0% 0 0 / 0.55);
+    z-index: 99;
+    cursor: pointer;
+}
+body.sidebar-open .sidebar-overlay { display: block; }
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+    width: 210px;
+    flex-shrink: 0;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    z-index: 100;
+    transition: transform 0.24s ease;
+}
+.sidebar-brand {
+    padding: 22px 18px 14px;
+    border-bottom: 1px solid oklch(100% 0 0 / 0.07);
+}
+.sidebar-wordmark {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 21px;
+    color: var(--sidebar-active);
+    letter-spacing: -0.01em;
+    line-height: 1;
+}
+.sidebar-sub {
+    font-size: 10px;
+    color: var(--sidebar-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+    font-family: var(--mono);
+}
+.sidebar-section { padding: 18px 0 6px; }
+.sidebar-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sidebar-muted);
+    padding: 0 15px 5px;
+}
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 15px;
+    color: var(--sidebar-fg);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+    position: relative;
+}
+.nav-item:hover { color: var(--sidebar-active); background: oklch(100% 0 0 / 0.04); }
+.nav-item.active {
+    color: var(--sidebar-active);
+    background: oklch(100% 0 0 / 0.06);
+    font-weight: 500;
+}
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 25%;
+    bottom: 25%;
+    width: 2px;
+    background: var(--overdue);
+    border-radius: 2px;
+}
+.nav-item svg { opacity: 0.65; flex-shrink: 0; }
+.nav-item.active svg { opacity: 1; }
+.nav-badge {
+    margin-left: auto;
+    background: var(--overdue);
+    color: oklch(93% 0.022 82);
+    font-size: 9px;
+    font-weight: 500;
+    padding: 1px 5px;
+    border-radius: 99px;
+    font-family: var(--mono);
+    line-height: 1.6;
+}
+.sidebar-footer {
+    margin-top: auto;
+    padding: 14px 15px;
+    border-top: 1px solid oklch(100% 0 0 / 0.07);
+}
+.user-pill { display: flex; align-items: center; gap: 10px; }
+.user-avatar {
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: var(--overdue);
+    color: oklch(93% 0.022 82);
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.user-name  { font-size: 12px; color: var(--sidebar-fg); font-weight: 500; line-height: 1.3; }
+.user-role  { font-size: 10px; color: var(--sidebar-muted); font-family: var(--mono); }
+
+/* ─── Main ────────────────────────────────────────────────────────────────── */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ─── Topbar ──────────────────────────────────────────────────────────────── */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 46px;
+    border-bottom: 1px solid var(--hairline);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    gap: 12px;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: none;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r);
+    cursor: pointer;
+    color: var(--ink-2);
+    flex-shrink: 0;
+}
+.topbar-date {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.topbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r-md);
+    background: none;
+    color: var(--ink-2);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--sans);
+    white-space: nowrap;
+    transition: background 0.1s;
+}
+.topbar-btn:hover { background: var(--paper-2); }
+.topbar-btn.primary {
+    background: var(--overdue);
+    border-color: var(--overdue);
+    color: oklch(93% 0.022 82);
+}
+.topbar-btn.primary:hover { background: oklch(30% 0.095 22); }
+.topbar-btn span { display: inline; }
+
+/* ─── Content ─────────────────────────────────────────────────────────────── */
+.content { padding: 28px 24px 48px; flex: 1; }
+
+/* ─── Section rule ────────────────────────────────────────────────────────── */
+.section-rule {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.section-rule::before,
+.section-rule::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--hairline-strong);
+}
+.section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+/* ─── Hero ────────────────────────────────────────────────────────────────── */
+.hero { margin-bottom: 24px; }
+.hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+.hero-number {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(42px, 7vw, 72px);
+    font-weight: 400;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+}
+.hero-number em {
+    font-style: normal;
+    color: var(--muted);
+    font-size: clamp(20px, 3.5vw, 32px);
+    margin-left: 4px;
+    font-weight: 300;
+}
+.hero-sub { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+.hero-sub strong { color: var(--overdue); font-weight: 600; }
+
+/* ─── KPI strip ───────────────────────────────────────────────────────────── */
+.kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.kpi-cell {
+    padding: 13px 16px;
+    border-right: 1px solid var(--hairline-strong);
+}
+.kpi-cell:last-child { border-right: none; }
+.kpi-cell.overdue  { background: var(--overdue-bg); }
+.kpi-cell.pending  { background: var(--pending-bg); }
+.kpi-cell.info     { background: var(--info-bg); }
+.kpi-cell.paid     { background: var(--paid-bg); }
+.kpi-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+}
+.kpi-value {
+    font-family: var(--serif);
+    font-size: clamp(20px, 2.5vw, 26px);
+    font-weight: 400;
+    line-height: 1;
+    color: var(--ink);
+}
+.kpi-cell.overdue .kpi-value { color: var(--overdue); }
+.kpi-cell.pending .kpi-value { color: var(--pending); }
+.kpi-sub { font-size: 10.5px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+/* ─── Alert table (sans stripe latérale — fond de ligne à la place) ─────── */
+.alerts {
+    margin-bottom: 28px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r-md);
+    overflow: hidden;
+}
+.alert-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--hairline);
+}
+.alert-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.alert-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--overdue);
+    font-weight: 500;
+}
+.alert-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--hairline);
+}
+.alert-row:last-child { border-bottom: none; }
+/* Distinction par fond de ligne — pas de stripe latérale */
+.alert-row.is-overdue { background: var(--overdue-bg); }
+.alert-row.is-pending { background: var(--pending-bg); }
+.alert-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    flex: 1;
+    min-width: 0;
+}
+.alert-ref {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+}
+.alert-row.is-overdue .alert-ref { color: var(--overdue); }
+.alert-row.is-pending .alert-ref { color: var(--pending); }
+.alert-who {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.alert-amount {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 14px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.alert-row.is-overdue .alert-amount { color: var(--overdue); }
+.alert-row.is-pending .alert-amount { color: var(--pending); }
+.alert-badge { padding: 8px 14px 8px 0; flex-shrink: 0; }
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    font-family: var(--mono);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+.badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.badge.overdue  { background: var(--overdue-mid);  color: var(--overdue); }
+.badge.overdue::before  { background: var(--overdue); }
+.badge.pending  { background: var(--pending-mid);  color: var(--pending); }
+.badge.pending::before  { background: var(--pending); }
+.badge.paid     { background: var(--paid-bg);      color: var(--paid); }
+.badge.paid::before     { background: var(--paid); }
+.badge.info     { background: var(--info-bg);      color: var(--info); }
+.badge.info::before     { background: var(--info); }
+
+/* ─── Body columns ────────────────────────────────────────────────────────── */
+.body-cols {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+/* ─── Data table ──────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; margin-bottom: 24px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 540px; }
+.data-table thead th {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 0 10px 8px 0;
+    border-bottom: 1px solid var(--hairline-strong);
+    font-weight: 400;
+}
+.data-table thead th:last-child { text-align: right; padding-right: 0; }
+.data-table tbody tr {
+    border-bottom: 1px solid var(--hairline);
+    transition: background 0.1s;
+}
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--paper-2); }
+.data-table td { padding: 8px 10px 8px 0; color: var(--ink); vertical-align: middle; }
+.data-table td:last-child { text-align: right; padding-right: 0; }
+.td-ref    { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.td-who    { font-weight: 500; }
+.td-date   { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.td-amount { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+.td-amount.overdue { color: var(--overdue); }
+.col-dates { /* hide on small screens via media query */ }
+
+/* ─── Supplier bars ───────────────────────────────────────────────────────── */
+.supplier-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.supplier-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 5px;
+}
+.supplier-name   { font-size: 12.5px; font-weight: 500; color: var(--ink); }
+.supplier-amount { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.bar-track { height: 3px; background: var(--paper-3); border-radius: 2px; overflow: hidden; }
+.bar-fill  { height: 100%; border-radius: 2px; background: var(--ink-2); transition: width 0.6s ease; }
+.bar-fill.overdue { background: var(--overdue); }
+.bar-fill.pending { background: var(--pending); }
+
+/* ─── SVG chart ───────────────────────────────────────────────────────────── */
+.chart-wrap { margin-bottom: 24px; }
+.chart-svg  { width: 100%; display: block; }
+
+/* ─── Right column ─────────────────────────────────────────────────────────── */
+.right-col { display: flex; flex-direction: column; gap: 20px; }
+
+/* ─── AI panel ────────────────────────────────────────────────────────────── */
+.ai-panel { border: 1px solid var(--hairline-strong); border-radius: var(--r-md); overflow: hidden; }
+.ai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    background: var(--ink);
+    color: var(--paper);
+}
+.ai-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+}
+.ai-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: oklch(100% 0 0 / 0.08);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+.ai-body { padding: 14px; background: var(--paper); }
+.ai-note {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--ink-2);
+    margin-bottom: 12px;
+}
+.ai-questions { display: flex; flex-direction: column; gap: 5px; }
+.ai-question {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 9px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r);
+    cursor: pointer;
+    transition: background 0.1s;
+    background: var(--paper);
+    min-height: 44px; /* touch target */
+}
+.ai-question:hover { background: var(--paper-2); }
+.ai-q-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--overdue);
+    flex-shrink: 0;
+    margin-top: 5px;
+}
+.ai-q-text { font-size: 12px; color: var(--ink); line-height: 1.4; }
+
+/* ─── Offices panel ───────────────────────────────────────────────────────── */
+.offices-panel { border: 1px solid var(--hairline-strong); border-radius: var(--r-md); overflow: hidden; }
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--hairline);
+}
+.panel-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.panel-link {
+    font-size: 11px;
+    color: var(--overdue);
+    cursor: pointer;
+    text-decoration: none;
+}
+.panel-link:hover { text-decoration: underline; }
+.office-row {
+    display: flex;
+    align-items: center;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--hairline);
+    gap: 10px;
+    min-height: 44px;
+}
+.office-row:last-child { border-bottom: none; }
+.office-title  { font-size: 12px; font-weight: 500; flex: 1; color: var(--ink); line-height: 1.3; }
+.office-meta   { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+.office-right  { text-align: right; flex-shrink: 0; }
+.office-amount { font-family: var(--mono); font-size: 11.5px; color: var(--ink); font-weight: 500; }
+
+/* ─── Budget panel ────────────────────────────────────────────────────────── */
+.budget-panel  { border: 1px solid var(--hairline-strong); border-radius: var(--r-md); overflow: hidden; }
+.budget-header { padding: 8px 14px; background: var(--paper-2); border-bottom: 1px solid var(--hairline); display: flex; align-items: center; justify-content: space-between; }
+.budget-month  { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.budget-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--hairline);
+    min-height: 44px;
+}
+.budget-row:last-child { border-bottom: none; }
+.budget-cat     { font-size: 12px; color: var(--ink); flex: 1; }
+.budget-bw      { flex: 1.2; }
+.budget-track   { height: 3px; background: var(--paper-3); border-radius: 2px; overflow: hidden; }
+.budget-fill    { height: 100%; border-radius: 2px; background: var(--paid); }
+.budget-fill.over { background: var(--overdue); }
+.budget-ecart   { font-family: var(--mono); font-size: 10.5px; text-align: right; min-width: 56px; flex-shrink: 0; }
+.budget-ecart.pos { color: var(--paid); }
+.budget-ecart.neg { color: var(--overdue); }
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — TABLET (< 1024px)
+════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+    /* Sidebar fixed, hors écran, slide-in */
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100%;
+        transform: translateX(-100%);
+    }
+    body.sidebar-open .sidebar { transform: translateX(0); }
+    /* Afficher le bouton hamburger */
+    .menu-btn { display: flex; }
+    /* Topbar date cachée sur tablette petite */
+    .body-cols { grid-template-columns: 1fr; }
+    .right-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE (< 640px)
+════════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 639px) {
+    /* KPI : 2×2 au lieu de 4×1 */
+    .kpi-strip {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .kpi-cell { border-right: 1px solid var(--hairline-strong); border-bottom: 1px solid var(--hairline-strong); }
+    .kpi-cell:nth-child(2)  { border-right: none; }
+    .kpi-cell:nth-child(3)  { border-bottom: none; }
+    .kpi-cell:nth-child(4)  { border-right: none; border-bottom: none; }
+
+    /* Topbar date : raccourcie */
+    .topbar-date-long  { display: none; }
+    .topbar-date-short { display: block; }
+
+    /* Topbar actions : cacher "Conseiller IA" */
+    .btn-assistant { display: none; }
+
+    /* Topbar padding réduit */
+    .topbar { padding: 0 14px; }
+    .content { padding: 18px 14px 40px; }
+
+    /* Hero plus petit */
+    .hero { margin-bottom: 18px; }
+
+    /* Masquer les colonnes dates dans le tableau */
+    .col-dates { display: none; }
+
+    /* Alertes : masquer le badge sur très petit */
+    .alert-badge { display: none; }
+
+    /* Right col : colonne unique */
+    .right-col { grid-template-columns: 1fr; }
+}
+
+/* ─── Topbar short date (mobile only) ────────────────────────────────────── */
+.topbar-date-short { display: none; }
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="overlay"></div>
+
+<div class="app">
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════════════════════════════════════ -->
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="sidebar-wordmark">Incunable</div>
+        <div class="sidebar-sub">Librairie du Vieux Papier</div>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-label">Vue générale</div>
+        <div class="nav-item active">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            Tableau de bord
+        </div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
+            Rapports
+        </div>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-label">Finances</div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Lettres de change
+            <span class="nav-badge">4</span>
+        </div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Budget mensuel
+        </div>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-label">Stocks &amp; Offices</div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            Stock livres
+        </div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            Offices
+        </div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Distributeurs
+        </div>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-label">Gestion</div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Conseiller IA
+        </div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Tickets support
+            <span class="nav-badge">2</span>
+        </div>
+        <div class="nav-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Configuration
+        </div>
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="user-pill">
+            <div class="user-avatar">ML</div>
+            <div>
+                <div class="user-name">Marie Leblanc</div>
+                <div class="user-role">gérante</div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════════════════════════════════════ -->
+<div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="menu-btn" id="menu-btn" aria-label="Menu" aria-expanded="false">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <span class="topbar-date topbar-date-long">Lundi 28 avril 2026 &nbsp;·&nbsp; Semaine 18</span>
+            <span class="topbar-date topbar-date-short">28 avr. 2026</span>
+        </div>
+        <div class="topbar-actions">
+            <button class="topbar-btn btn-assistant">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Conseiller IA</span>
+            </button>
+            <button class="topbar-btn primary">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Nouvelle LCR</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+        <!-- ── HERO ────────────────────────────────────────────────────── -->
+        <div class="hero">
+            <div class="hero-eyebrow">Encours global · toutes LCR actives</div>
+            <div class="hero-number">127 450 <em>€</em></div>
+            <div class="hero-sub">
+                dont <strong>23 840 € en retard</strong> &nbsp;·&nbsp;
+                12 lettres actives &nbsp;·&nbsp; 6 distributeurs
+            </div>
+        </div>
+
+        <!-- ── KPI STRIP ───────────────────────────────────────────────── -->
+        <div class="kpi-strip">
+            <div class="kpi-cell overdue">
+                <div class="kpi-label">En retard</div>
+                <div class="kpi-value">23 840 €</div>
+                <div class="kpi-sub">4 lettres · +12 j moy.</div>
+            </div>
+            <div class="kpi-cell pending">
+                <div class="kpi-label">Ce mois</div>
+                <div class="kpi-value">38 210 €</div>
+                <div class="kpi-sub">5 échéances à venir</div>
+            </div>
+            <div class="kpi-cell info">
+                <div class="kpi-label">Offices actifs</div>
+                <div class="kpi-value">14</div>
+                <div class="kpi-sub">3 retours ce mois</div>
+            </div>
+            <div class="kpi-cell paid">
+                <div class="kpi-label">Stock livres</div>
+                <div class="kpi-value">2 847</div>
+                <div class="kpi-sub">6 titres en alerte</div>
+            </div>
+        </div>
+
+        <!-- ── ALERTES ─────────────────────────────────────────────────── -->
+        <div class="section-rule"><span class="section-label">Alertes urgentes</span></div>
+        <div class="alerts">
+            <div class="alert-header">
+                <span class="alert-title">LCR en souffrance</span>
+                <span class="alert-count">4 lettres en retard</span>
+            </div>
+            <div class="alert-row is-overdue">
+                <div class="alert-body">
+                    <span class="alert-ref">LCR-2026-0034</span>
+                    <span class="alert-who">Hachette Distribution</span>
+                </div>
+                <span class="alert-amount">9 480 €</span>
+                <div class="alert-badge"><span class="badge overdue">+18 j</span></div>
+            </div>
+            <div class="alert-row is-overdue">
+                <div class="alert-body">
+                    <span class="alert-ref">LCR-2026-0029</span>
+                    <span class="alert-who">Gallimard Diffusion</span>
+                </div>
+                <span class="alert-amount">7 640 €</span>
+                <div class="alert-badge"><span class="badge overdue">+11 j</span></div>
+            </div>
+            <div class="alert-row is-overdue">
+                <div class="alert-body">
+                    <span class="alert-ref">LCR-2026-0031</span>
+                    <span class="alert-who">Sodis</span>
+                </div>
+                <span class="alert-amount">4 270 €</span>
+                <div class="alert-badge"><span class="badge overdue">+7 j</span></div>
+            </div>
+            <div class="alert-row is-overdue">
+                <div class="alert-body">
+                    <span class="alert-ref">LCR-2026-0027</span>
+                    <span class="alert-who">Interforum</span>
+                </div>
+                <span class="alert-amount">2 450 €</span>
+                <div class="alert-badge"><span class="badge overdue">+3 j</span></div>
+            </div>
+        </div>
+
+        <!-- ── BODY COLUMNS ────────────────────────────────────────────── -->
+        <div class="body-cols" style="margin-top:28px;">
+
+            <!-- LEFT col -->
+            <div>
+                <!-- Tableau LCR -->
+                <div class="section-rule"><span class="section-label">Toutes les lettres actives</span></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>Distributeur</th>
+                                <th class="col-dates">Émission</th>
+                                <th class="col-dates">Échéance</th>
+                                <th>Statut</th>
+                                <th>Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="td-ref">LCR-2026-0034</td>
+                                <td class="td-who">Hachette Distribution</td>
+                                <td class="td-date col-dates">02/03/2026</td>
+                                <td class="td-date col-dates">10/04/2026</td>
+                                <td><span class="badge overdue">En retard</span></td>
+                                <td class="td-amount overdue">9 480 €</td>
+                            </tr>
+                            <tr>
+                                <td class="td-ref">LCR-2026-0029</td>
+                                <td class="td-who">Gallimard Diffusion</td>
+                                <td class="td-date col-dates">18/02/2026</td>
+                                <td class="td-date col-dates">17/04/2026</td>
+                                <td><span class="badge overdue">En retard</span></td>
+                                <td class="td-amount overdue">7 640 €</td>
+                            </tr>
+                            <tr>
+                                <td class="td-ref">LCR-2026-0037</td>
+                                <td class="td-who">Dilisco</td>
+                                <td class="td-date col-dates">14/04/2026</td>
+                                <td class="td-date col-dates">12/05/2026</td>
+                                <td><span class="badge pending">En attente</span></td>
+                                <td class="td-amount">11 200 €</td>
+                            </tr>
+                            <tr>
+                                <td class="td-ref">LCR-2026-0036</td>
+                                <td class="td-who">Sodis</td>
+                                <td class="td-date col-dates">10/04/2026</td>
+                                <td class="td-date col-dates">08/05/2026</td>
+                                <td><span class="badge pending">En attente</span></td>
+                                <td class="td-amount">8 350 €</td>
+                            </tr>
+                            <tr>
+                                <td class="td-ref">LCR-2026-0033</td>
+                                <td class="td-who">Interforum</td>
+                                <td class="td-date col-dates">05/04/2026</td>
+                                <td class="td-date col-dates">04/05/2026</td>
+                                <td><span class="badge pending">En attente</span></td>
+                                <td class="td-amount">6 800 €</td>
+                            </tr>
+                            <tr>
+                                <td class="td-ref">LCR-2026-0025</td>
+                                <td class="td-who">Hachette Distribution</td>
+                                <td class="td-date col-dates">10/01/2026</td>
+                                <td class="td-date col-dates">08/02/2026</td>
+                                <td><span class="badge paid">Payée</span></td>
+                                <td class="td-amount">14 300 €</td>
+                            </tr>
+                            <tr>
+                                <td class="td-ref">LCR-2026-0022</td>
+                                <td class="td-who">Gallimard Diffusion</td>
+                                <td class="td-date col-dates">05/01/2026</td>
+                                <td class="td-date col-dates">02/02/2026</td>
+                                <td><span class="badge paid">Payée</span></td>
+                                <td class="td-amount">9 720 €</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Graphe SVG -->
+                <div class="section-rule"><span class="section-label">Évolution encours — 6 mois</span></div>
+                <div class="chart-wrap">
+                    <svg class="chart-svg" viewBox="0 0 560 140" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="40" y1="10"  x2="550" y2="10"  stroke="oklch(87% 0.026 78)" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <line x1="40" y1="43"  x2="550" y2="43"  stroke="oklch(87% 0.026 78)" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <line x1="40" y1="76"  x2="550" y2="76"  stroke="oklch(87% 0.026 78)" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <line x1="40" y1="109" x2="550" y2="109" stroke="oklch(87% 0.026 78)" stroke-width="0.5" stroke-dasharray="3,3"/>
+                        <text x="36" y="13"  text-anchor="end" font-size="8" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">160k</text>
+                        <text x="36" y="46"  text-anchor="end" font-size="8" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">120k</text>
+                        <text x="36" y="79"  text-anchor="end" font-size="8" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">80k</text>
+                        <text x="36" y="112" text-anchor="end" font-size="8" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">40k</text>
+                        <defs>
+                            <linearGradient id="grd" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%"   stop-color="oklch(36% 0.102 22)" stop-opacity="0.16"/>
+                                <stop offset="100%" stop-color="oklch(36% 0.102 22)" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M 55 89 L 142 75 L 229 94 L 316 60 L 403 52 L 490 67 L 490 120 L 55 120 Z" fill="url(#grd)"/>
+                        <polyline points="55,89 142,75 229,94 316,60 403,52 490,67" fill="none" stroke="oklch(36% 0.102 22)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+                        <circle cx="55"  cy="89" r="2.5" fill="oklch(36% 0.102 22)"/>
+                        <circle cx="142" cy="75" r="2.5" fill="oklch(36% 0.102 22)"/>
+                        <circle cx="229" cy="94" r="2.5" fill="oklch(36% 0.102 22)"/>
+                        <circle cx="316" cy="60" r="2.5" fill="oklch(36% 0.102 22)"/>
+                        <circle cx="403" cy="52" r="2.5" fill="oklch(36% 0.102 22)"/>
+                        <circle cx="490" cy="67" r="3.5" fill="oklch(36% 0.102 22)" stroke="oklch(93% 0.022 82)" stroke-width="1.5"/>
+                        <text x="55"  y="134" text-anchor="middle" font-size="8.5" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">Nov</text>
+                        <text x="142" y="134" text-anchor="middle" font-size="8.5" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">Déc</text>
+                        <text x="229" y="134" text-anchor="middle" font-size="8.5" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">Jan</text>
+                        <text x="316" y="134" text-anchor="middle" font-size="8.5" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">Fév</text>
+                        <text x="403" y="134" text-anchor="middle" font-size="8.5" fill="oklch(44% 0.018 64)" font-family="JetBrains Mono,monospace">Mar</text>
+                        <text x="490" y="134" text-anchor="middle" font-size="8.5" fill="oklch(23% 0.014 58)" font-family="JetBrains Mono,monospace" font-weight="600">Avr ▲</text>
+                    </svg>
+                </div>
+
+                <!-- Barres distributeurs -->
+                <div class="section-rule"><span class="section-label">Répartition par distributeur</span></div>
+                <div class="supplier-list">
+                    <div>
+                        <div class="supplier-head">
+                            <span class="supplier-name">Hachette Distribution</span>
+                            <span class="supplier-amount">54 340 €</span>
+                        </div>
+                        <div class="bar-track"><div class="bar-fill overdue" style="width:74%"></div></div>
+                    </div>
+                    <div>
+                        <div class="supplier-head">
+                            <span class="supplier-name">Gallimard Diffusion</span>
+                            <span class="supplier-amount">38 190 €</span>
+                        </div>
+                        <div class="bar-track"><div class="bar-fill" style="width:52%"></div></div>
+                    </div>
+                    <div>
+                        <div class="supplier-head">
+                            <span class="supplier-name">Sodis</span>
+                            <span class="supplier-amount">19 740 €</span>
+                        </div>
+                        <div class="bar-track"><div class="bar-fill pending" style="width:27%"></div></div>
+                    </div>
+                    <div>
+                        <div class="supplier-head">
+                            <span class="supplier-name">Interforum</span>
+                            <span class="supplier-amount">9 830 €</span>
+                        </div>
+                        <div class="bar-track"><div class="bar-fill" style="width:13%"></div></div>
+                    </div>
+                    <div>
+                        <div class="supplier-head">
+                            <span class="supplier-name">Dilisco</span>
+                            <span class="supplier-amount">5 350 €</span>
+                        </div>
+                        <div class="bar-track"><div class="bar-fill" style="width:7%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT col -->
+            <div class="right-col">
+
+                <!-- Conseiller IA -->
+                <div class="ai-panel">
+                    <div class="ai-header">
+                        <span class="ai-title">Conseil du jour</span>
+                        <span class="ai-tag">IA · Groq</span>
+                    </div>
+                    <div class="ai-body">
+                        <p class="ai-note">
+                            « Hachette affiche 18 jours de retard sur LCR-2026-0034. Un rappel
+                            amiable adressé ce matin évite les pénalités contractuelles
+                            applicables dès le 21ᵉ jour. »
+                        </p>
+                        <div style="font-family:var(--mono);font-size:9px;letter-spacing:0.11em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;">Questions suggérées</div>
+                        <div class="ai-questions">
+                            <div class="ai-question">
+                                <div class="ai-q-dot"></div>
+                                <span class="ai-q-text">Quelle est la tendance de mes retards sur 6 mois ?</span>
+                            </div>
+                            <div class="ai-question">
+                                <div class="ai-q-dot"></div>
+                                <span class="ai-q-text">Quel distributeur représente le plus de risque ?</span>
+                            </div>
+                            <div class="ai-question">
+                                <div class="ai-q-dot"></div>
+                                <span class="ai-q-text">Mon budget avril est-il en bonne voie ?</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Offices -->
+                <div class="offices-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Offices en cours</span>
+                        <a class="panel-link" href="#">Voir tout →</a>
+                    </div>
+                    <div class="office-row">
+                        <div style="flex:1;min-width:0;">
+                            <div class="office-title">Les Enfants du temps</div>
+                            <div class="office-meta">Gallimard · retour 15/05/2026</div>
+                        </div>
+                        <div class="office-right">
+                            <div style="margin-bottom:3px;"><span class="badge info">En attente</span></div>
+                            <div class="office-amount">380 €</div>
+                        </div>
+                    </div>
+                    <div class="office-row">
+                        <div style="flex:1;min-width:0;">
+                            <div class="office-title">Carte blanche</div>
+                            <div class="office-meta">Actes Sud · retour 02/05/2026</div>
+                        </div>
+                        <div class="office-right">
+                            <div style="margin-bottom:3px;"><span class="badge info">En attente</span></div>
+                            <div class="office-amount">220 €</div>
+                        </div>
+                    </div>
+                    <div class="office-row">
+                        <div style="flex:1;min-width:0;">
+                            <div class="office-title">Séquences nocturnes</div>
+                            <div class="office-meta">POL · retour 28/04/2026</div>
+                        </div>
+                        <div class="office-right">
+                            <div style="margin-bottom:3px;"><span class="badge overdue">En retard</span></div>
+                            <div class="office-amount" style="color:var(--overdue);">145 €</div>
+                        </div>
+                    </div>
+                    <div class="office-row">
+                        <div style="flex:1;min-width:0;">
+                            <div class="office-title">Dictionnaire des oubliés</div>
+                            <div class="office-meta">Retour partiel · 12/04/2026</div>
+                        </div>
+                        <div class="office-right">
+                            <div style="margin-bottom:3px;"><span class="badge pending">Partiel</span></div>
+                            <div class="office-amount">90 €</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Budget -->
+                <div class="budget-panel">
+                    <div class="budget-header">
+                        <span class="panel-title">Budget — avril 2026</span>
+                        <span class="budget-month">Semaine 3/4</span>
+                    </div>
+                    <div class="budget-row">
+                        <span class="budget-cat">Achats livres</span>
+                        <div class="budget-bw">
+                            <div class="budget-track"><div class="budget-fill" style="width:82%"></div></div>
+                        </div>
+                        <span class="budget-ecart pos">+1 840 €</span>
+                    </div>
+                    <div class="budget-row">
+                        <span class="budget-cat">Frais logistique</span>
+                        <div class="budget-bw">
+                            <div class="budget-track"><div class="budget-fill over" style="width:100%"></div></div>
+                        </div>
+                        <span class="budget-ecart neg">−220 €</span>
+                    </div>
+                    <div class="budget-row">
+                        <span class="budget-cat">Communication</span>
+                        <div class="budget-bw">
+                            <div class="budget-track"><div class="budget-fill" style="width:55%"></div></div>
+                        </div>
+                        <span class="budget-ecart pos">+640 €</span>
+                    </div>
+                    <div class="budget-row">
+                        <span class="budget-cat">Divers</span>
+                        <div class="budget-bw">
+                            <div class="budget-track"><div class="budget-fill" style="width:38%"></div></div>
+                        </div>
+                        <span class="budget-ecart pos">+380 €</span>
+                    </div>
+                </div>
+
+            </div><!-- /right-col -->
+        </div><!-- /body-cols -->
+
+    </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+(function () {
+    var btn     = document.getElementById('menu-btn');
+    var overlay = document.getElementById('overlay');
+    var body    = document.body;
+
+    function open()  { body.classList.add('sidebar-open');    btn.setAttribute('aria-expanded', 'true'); }
+    function close() { body.classList.remove('sidebar-open'); btn.setAttribute('aria-expanded', 'false'); }
+
+    btn.addEventListener('click', function () {
+        body.classList.contains('sidebar-open') ? close() : open();
+    });
+    overlay.addEventListener('click', close);
+
+    /* Fermer avec Escape */
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') close();
+    });
+})();
+</script>
+
+</body>
+</html>

@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  /* base = sous-chemin GitHub Pages (servalser.github.io/Incunable/) */
+  base: '/Incunable/',
   plugins: [react()],
   resolve: {
     alias: {

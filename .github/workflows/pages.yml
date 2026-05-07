@@ -25,10 +25,13 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # Le dossier preview/dist/ contient le build complet du site
+      # (React SPA navigable avec toutes les pages)
+      # + da-preview.html (standalone de la DA)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: preview/dist
 
       - name: Deploy to GitHub Pages
         id: deployment
