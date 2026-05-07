@@ -34,7 +34,7 @@ export const tickets = [
 ];
 
 export const config = {
-  nom_librairie: "Librairie du Vieux Carré", siret: "48250261500025", email: "contact@vieux-carre.fr",
+  nom_librairie: "Librairie du Vieux Papier", siret: "48250261500025", email: "contact@vieux-carre.fr",
   telephone: "04 67 58 12 34", adresse: "12 rue de la Loge\n34000 Montpellier",
   delai_commandes_mois: 3, delai_offices_mois: 2,
   alerte_7j: true, alerte_1j: false, alerte_retard: true, alerte_retour_expiration: true, alerte_recap_hebdo: false,

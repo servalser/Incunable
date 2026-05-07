@@ -1,86 +1,49 @@
 import { useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/Layout/AppLayout.jsx';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.jsx';
-import { Badge } from '../components/ui/Badge.jsx';
-import { Button } from '../components/ui/button.jsx';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '../components/ui/table.jsx';
 import {
   stats, chart_data, distrib_stats,
-  alertes_retard, alertes_proches, alertes_offices, lettres,
+  alertes_retard, alertes_proches, alertes_offices, lettres, offices,
 } from '../data/mock.js';
-import {
-  CalendarDays, Clock, AlertTriangle, Bell, ArrowRight, TrendingUp,
-} from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 const euro = (n) =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n ?? 0);
+
+const euroFull = (n) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n ?? 0);
 
 const dateFr = (str) =>
   str ? new Date(str).toLocaleDateString('fr-FR') : '—';
 
-/* ── Carte KPI ────────────────────────────────────────────────── */
-function KpiCard({ label, value, sub, icon: Icon, variant = 'default', linkTo }) {
-  const navigate = useNavigate();
-
-  const colorMap = {
-    default: 'text-primary',
-    accent:  'text-primary',
-    danger:  'text-destructive',
-    warning: 'text-warning',
-    success: 'text-success',
-  };
-
-  const bgMap = {
-    default: 'bg-primary/10',
-    accent:  'bg-primary/10',
-    danger:  'bg-destructive/10',
-    warning: 'bg-warning/10',
-    success: 'bg-success/10',
-  };
-
-  const color = colorMap[variant] ?? colorMap.default;
-  const bg    = bgMap[variant]    ?? bgMap.default;
-
+/* ── Section rule ─────────────────────────────────────────────── */
+function SectionRule({ label }) {
   return (
-    <Card
-      className={`transition-shadow hover:shadow-md ${linkTo ? 'cursor-pointer' : ''}`}
-      onClick={linkTo ? () => navigate(linkTo) : undefined}
-    >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${bg}`}>
-          <Icon className={`h-4 w-4 ${color}`} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className={`text-2xl font-bold ${variant !== 'default' && variant !== 'accent' ? color : ''}`}>
-          {value}
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
-      </CardContent>
-    </Card>
+    <div className="section-rule">
+      <span className="section-label">{label}</span>
+    </div>
   );
 }
 
-/* ── Ligne alerte ─────────────────────────────────────────────── */
-function AlertRow({ reference, id, distributeur, montant, right, route, urgent }) {
+/* ── Badge statut ──────────────────────────────────────────────── */
+function StatusBadge({ variant = 'neutral', children }) {
+  const colors = {
+    overdue:  { bg: 'var(--overdue-bg)', text: 'hsl(var(--destructive))', dot: 'hsl(var(--destructive))' },
+    pending:  { bg: 'var(--pending-bg)', text: 'hsl(var(--warning))',     dot: 'hsl(var(--warning))' },
+    paid:     { bg: 'var(--paid-bg)',    text: 'hsl(var(--success))',     dot: 'hsl(var(--success))' },
+    info:     { bg: 'var(--info-bg)',    text: 'hsl(var(--info))',        dot: 'hsl(var(--info))' },
+    neutral:  { bg: 'hsl(var(--muted))', text: 'hsl(var(--muted-foreground))', dot: 'hsl(var(--muted-foreground))' },
+  };
+  const c = colors[variant] || colors.neutral;
   return (
-    <Link
-      to={`/${route}/${id}`}
-      className="flex items-center gap-4 px-4 py-2.5 hover:bg-muted/40 transition-colors rounded-lg"
+    <span
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[10.5px] font-semibold whitespace-nowrap"
+      style={{ background: c.bg, color: c.text }}
     >
-      <span className="font-mono text-xs font-medium text-primary w-28 shrink-0">{reference}</span>
-      <span className="flex-1 text-sm text-muted-foreground truncate">{distributeur}</span>
-      <span className="font-mono text-sm font-semibold w-28 text-right">{euro(montant)}</span>
-      <span className={`text-xs font-medium w-32 text-right ${urgent ? 'text-destructive' : 'text-warning'}`}>
-        {right}
-      </span>
-      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-    </Link>
+      <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: c.dot }} />
+      {children}
+    </span>
   );
 }
 
@@ -90,23 +53,25 @@ export default function Dashboard() {
   const canvasRef = useRef(null);
   const chartRef  = useRef(null);
 
-  const prochaines = lettres
-    .filter((l) => l.jours_restants >= 0 && l.jours_restants <= 7)
-    .sort((a, b) => a.jours_restants - b.jours_restants)
-    .slice(0, 5);
-
   const todayLabel = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
-  /* ── Chart.js ─────────────────────────────────────────────── */
+  const prochaines = lettres
+    .filter((l) => l.jours_restants >= 0 && l.jours_restants <= 7)
+    .sort((a, b) => a.jours_restants - b.jours_restants);
+
+  const officesActifs = offices.filter(o => o.statut !== 'paye' && o.statut !== 'retourne');
+
+  /* ── Encours total ── */
+  const encours = lettres
+    .filter(l => l.statut !== 'paye')
+    .reduce((s, l) => s + l.montant_ttc, 0);
+
+  /* ── Chart.js ── */
   useEffect(() => {
     if (!window.Chart || !canvasRef.current) return;
     if (chartRef.current) chartRef.current.destroy();
-
-    const isDark = document.body.classList.contains('dark');
-    const gridColor   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-    const tickColor   = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
 
     chartRef.current = new window.Chart(canvasRef.current, {
       type: 'bar',
@@ -116,15 +81,15 @@ export default function Dashboard() {
           {
             label: 'LCR (€)',
             data: chart_data.map((d) => d.lettres),
-            backgroundColor: 'hsl(221 83% 53% / 0.8)',
-            borderRadius: 6,
+            backgroundColor: 'hsla(4, 58%, 31%, 0.75)',
+            borderRadius: 4,
             borderSkipped: false,
           },
           {
             label: 'Offices (€)',
             data: chart_data.map((d) => d.offices),
-            backgroundColor: 'hsl(142 71% 45% / 0.6)',
-            borderRadius: 6,
+            backgroundColor: 'hsla(140, 30%, 33%, 0.55)',
+            borderRadius: 4,
             borderSkipped: false,
           },
         ],
@@ -133,20 +98,20 @@ export default function Dashboard() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { labels: { color: tickColor, font: { size: 11 }, boxRadius: 4 } },
-          tooltip: { callbacks: { label: (ctx) => ` ${euro(ctx.raw)}` } },
+          legend: { labels: { color: '#6b6157', font: { size: 11, family: 'Geist' }, boxRadius: 3 } },
+          tooltip: { callbacks: { label: (ctx) => ` ${euroFull(ctx.raw)}` } },
         },
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: tickColor, font: { size: 10 } },
+            ticks: { color: '#6b6157', font: { size: 10, family: 'JetBrains Mono' } },
             border: { display: false },
           },
           y: {
-            grid: { color: gridColor },
+            grid: { color: 'rgba(26,22,18,0.08)' },
             ticks: {
-              color: tickColor,
-              font: { size: 10 },
+              color: '#6b6157',
+              font: { size: 10, family: 'JetBrains Mono' },
               callback: (v) => `${(v / 1000).toFixed(0)}k`,
             },
             border: { display: false },
@@ -158,236 +123,309 @@ export default function Dashboard() {
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, []);
 
-  const nbAlertes = alertes_retard.length + alertes_proches.length + alertes_offices.length;
-
   return (
     <AppLayout title="Tableau de bord">
 
-      {/* ── En-tête ─────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
-          <p className="text-sm text-muted-foreground capitalize mt-1">{todayLabel}</p>
+      {/* ── Topbar inline ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="font-mono text-[11px] text-muted-foreground capitalize tracking-wide">
+          {todayLabel}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/lettres/creer">+ Nouvelle LCR</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link to="/offices/creer">+ Nouvelle office</Link>
-          </Button>
+          <Link
+            to="/assistant"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-border rounded text-xs text-foreground hover:bg-muted transition-colors"
+          >
+            Conseiller IA
+          </Link>
+          <Link
+            to="/lettres/creer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium text-primary-foreground bg-primary hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-3 h-3" />
+            Nouvelle LCR
+          </Link>
         </div>
       </div>
 
-      {/* ── KPIs ───────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard
-          label="Dû ce mois"
-          value={euro(stats.du_ce_mois)}
-          sub="LCR à régler en avril"
-          icon={CalendarDays}
-          variant="accent"
-        />
-        <KpiCard
-          label="Horizon 30 jours"
-          value={euro(stats.du_30j)}
-          sub="Toutes échéances confondues"
-          icon={Clock}
-        />
-        <KpiCard
-          label="En retard"
-          value={euro(stats.en_retard)}
-          sub={`${alertes_retard.length} lettre(s) concernée(s)`}
-          icon={AlertTriangle}
-          variant={stats.en_retard > 0 ? 'danger' : 'default'}
-          linkTo={stats.en_retard > 0 ? '/lettres' : undefined}
-        />
-        <KpiCard
-          label="Offices en alerte"
-          value={stats.offices_alerte}
-          sub="Retour limite proche ou dépassée"
-          icon={Bell}
-          variant={stats.offices_alerte > 0 ? 'warning' : 'default'}
-          linkTo={stats.offices_alerte > 0 ? '/offices' : undefined}
-        />
+      {/* ── HERO — encours ── */}
+      <div className="mb-6">
+        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground mb-1">
+          Encours global — toutes LCR en cours
+        </div>
+        <div className="font-serif italic text-[72px] font-medium leading-none text-foreground tracking-tight">
+          {new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(encours)}
+          <span className="not-italic text-muted-foreground text-[32px] font-light ml-1.5">€</span>
+        </div>
+        <div className="text-[12.5px] text-muted-foreground mt-1.5">
+          dont <strong className="text-destructive font-semibold">{euro(stats.en_retard)} en retard</strong>
+          {' '}· {lettres.filter(l => l.statut !== 'paye').length} lettres actives
+          · {distrib_stats.length} distributeurs
+        </div>
       </div>
 
-      {/* ── Alertes actives ────────────────────────────────── */}
-      {nbAlertes > 0 && (
-        <Card className="mb-6">
-          <CardHeader className="flex flex-row items-center justify-between py-4">
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              Alertes actives
-            </CardTitle>
-            <Badge variant="destructive">{nbAlertes}</Badge>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0 space-y-4">
+      {/* ── KPI STRIP ── */}
+      <div className="grid grid-cols-4 border border-border rounded-md overflow-hidden mb-6">
+        {[
+          { label: 'En retard', value: euro(stats.en_retard), sub: `${alertes_retard.length} lettre(s) · retard moyen`, variant: 'overdue' },
+          { label: 'Ce mois',   value: euro(stats.du_ce_mois), sub: `${prochaines.length} échéance(s) à venir`, variant: 'pending' },
+          { label: 'Offices actifs', value: String(officesActifs.length), sub: `${offices.filter(o => o.statut === 'en_attente').length} en attente`, variant: 'info' },
+          { label: 'Horizon 30j',   value: euro(stats.du_30j), sub: 'Toutes échéances confondues', variant: 'paid' },
+        ].map((kpi, i) => (
+          <div
+            key={kpi.label}
+            className={i < 3 ? 'border-r border-border' : ''}
+            style={{
+              padding: '14px 18px',
+              background: kpi.variant === 'overdue' ? 'var(--overdue-bg)' :
+                           kpi.variant === 'pending' ? 'var(--pending-bg)' :
+                           kpi.variant === 'info'    ? 'var(--info-bg)' :
+                           'var(--paid-bg)',
+            }}
+          >
+            <div className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground mb-1.5">
+              {kpi.label}
+            </div>
+            <div className="font-serif text-[26px] font-medium leading-none"
+              style={kpi.variant === 'overdue' ? { color: 'hsl(var(--destructive))' } : {}}
+            >
+              {kpi.value}
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-1">{kpi.sub}</div>
+          </div>
+        ))}
+      </div>
 
-            {alertes_retard.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1 px-4">
-                  <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                  <span className="text-xs font-semibold text-destructive">
-                    Lettres en retard — {alertes_retard.length}
+      {/* ── ALERTES ── */}
+      {alertes_retard.length > 0 && (
+        <>
+          <SectionRule label="Alertes urgentes" />
+          <div className="border border-border rounded-md overflow-hidden mb-6">
+            <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                LCR en souffrance
+              </span>
+              <span className="font-mono text-[10px] font-semibold text-destructive">
+                {alertes_retard.length} lettre(s) en retard
+              </span>
+            </div>
+            {alertes_retard.map((l) => (
+              <Link
+                key={l.id}
+                to={`/lettres/${l.id}`}
+                className="flex items-center border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
+                style={{ background: 'var(--overdue-bg)' }}
+              >
+                <div className="flex items-center gap-3 flex-1 px-4 py-2 min-w-0">
+                  <span className="font-mono text-[10.5px] text-destructive shrink-0">
+                    {l.reference}
                   </span>
+                  <span className="text-[12.5px] font-medium truncate">{l.distributeur}</span>
                 </div>
-                {alertes_retard.map((l) => (
-                  <AlertRow key={l.id} id={l.id} reference={l.reference}
-                    distributeur={l.distributeur} montant={l.montant_ttc}
-                    right={`${Math.abs(l.jours_restants)}j de retard`} route="lettres" urgent />
-                ))}
-              </div>
-            )}
-
-            {alertes_proches.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1 px-4">
-                  <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-                  <span className="text-xs font-semibold text-warning">
-                    Échéances dans moins de 7 jours — {alertes_proches.length}
-                  </span>
-                </div>
-                {alertes_proches.map((l) => (
-                  <AlertRow key={l.id} id={l.id} reference={l.reference}
-                    distributeur={l.distributeur} montant={l.montant_ttc}
-                    right={l.jours_restants === 0 ? "Aujourd'hui" : `${l.jours_restants}j restant(s)`}
-                    route="lettres" urgent={l.jours_restants <= 2} />
-                ))}
-              </div>
-            )}
-
-            {alertes_offices.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1 px-4">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  <span className="text-xs font-semibold text-primary">
-                    Retour d'office dans moins de 30 jours — {alertes_offices.length}
-                  </span>
-                </div>
-                {alertes_offices.map((o) => (
-                  <AlertRow key={o.id} id={o.id} reference={o.reference}
-                    distributeur={o.distributeur} montant={o.montant_ttc}
-                    right={`Retour le ${dateFr(o.date_retour_limite)}`} route="offices" />
-                ))}
-              </div>
-            )}
-
-          </CardContent>
-        </Card>
+                <span className="font-mono text-xs font-medium text-destructive px-4 py-2 shrink-0">
+                  {euroFull(l.montant_ttc)}
+                </span>
+                <span className="px-4 py-2 shrink-0">
+                  <StatusBadge variant="overdue">+{Math.abs(l.jours_restants)}j</StatusBadge>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
 
-      {/* ── Graphique + Fournisseurs ────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* ── BODY 2 COLONNES ── */}
+      <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
 
-        {/* Graphique */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Évolution sur 12 mois</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-56">
-              <canvas ref={canvasRef} />
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── COLONNE GAUCHE ── */}
+        <div>
+          {/* Table LCR */}
+          <SectionRule label="Toutes les lettres actives" />
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full text-[12.5px] border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  {['Référence', 'Distributeur', 'Émission', 'Échéance', 'Statut', 'Montant'].map((h, i) => (
+                    <th
+                      key={h}
+                      className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground font-normal text-left pb-2 pr-3"
+                      style={i === 5 ? { textAlign: 'right', paddingRight: 0 } : {}}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lettres.map((l) => {
+                  const statut = l.statut === 'en_retard' ? 'overdue' : l.statut === 'paye' ? 'paid' : 'pending';
+                  const label  = l.statut === 'en_retard' ? 'En retard' : l.statut === 'paye' ? 'Payée' : 'En attente';
+                  return (
+                    <tr
+                      key={l.id}
+                      className="border-b border-border hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/lettres/${l.id}`)}
+                    >
+                      <td className="py-2 pr-3 font-mono text-[10.5px] text-muted-foreground">{l.reference}</td>
+                      <td className="py-2 pr-3 font-medium">{l.distributeur.nom}</td>
+                      <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground">{dateFr(l.date_emission)}</td>
+                      <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground">{dateFr(l.date_echeance)}</td>
+                      <td className="py-2 pr-3"><StatusBadge variant={statut}>{label}</StatusBadge></td>
+                      <td className={`py-2 font-mono text-[12.5px] font-medium text-right ${statut === 'overdue' ? 'text-destructive' : ''}`}>
+                        {euroFull(l.montant_ttc)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Fournisseurs */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Montants par fournisseur</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-3">
-            {distrib_stats.map((d, i) => {
-              const max = distrib_stats[0].total;
+          {/* Graphe */}
+          <SectionRule label="Évolution sur 12 mois" />
+          <div className="h-56 mb-6">
+            <canvas ref={canvasRef} />
+          </div>
+
+          {/* Barres distributeurs */}
+          <SectionRule label="Répartition par distributeur" />
+          <div className="flex flex-col gap-3 mb-6">
+            {distrib_stats.map((d) => {
+              const max = Math.max(...distrib_stats.map(x => x.total));
               const pct = Math.round((d.total / max) * 100);
               return (
-                <div key={d.nom} className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-muted-foreground w-4">{i + 1}</span>
-                  <div className="flex-1">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">{d.nom}</span>
-                      <span className="font-mono text-sm font-semibold">{euro(d.total)}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                <div key={d.nom}>
+                  <div className="flex justify-between items-baseline mb-1.5">
+                    <span className="text-[12.5px] font-medium">{d.nom}</span>
+                    <span className="font-mono text-[11.5px] text-muted-foreground">{euroFull(d.total)}</span>
+                  </div>
+                  <div className="h-1 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        background: d.nom === distrib_stats[0].nom ? 'hsl(var(--destructive))' : 'hsl(var(--foreground) / 0.3)',
+                      }}
+                    />
                   </div>
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
+        {/* ── COLONNE DROITE ── */}
+        <div className="flex flex-col gap-5">
+
+          {/* Panneau IA */}
+          <div className="border border-border rounded-md overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5"
+              style={{ background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}
+            >
+              <span className="font-serif italic text-sm">Conseil du jour</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground bg-white/10 px-1.5 py-0.5 rounded">
+                IA · Groq
+              </span>
+            </div>
+            <div className="p-4">
+              <p className="font-serif italic text-sm leading-relaxed text-foreground/80 mb-3">
+                « Hachette Livre affiche 8 jours de retard sur LCR-2025-0042.
+                Un rappel amiable adressé ce matin évite les pénalités contractuelles
+                applicables dès le 14ᵉ jour. »
+              </p>
+              <div className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground mb-2">
+                Questions suggérées
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {[
+                  'Quelle est la tendance de mes retards sur 6 mois ?',
+                  'Quel distributeur représente le plus de risque ?',
+                  'Mon budget avril est-il en bonne voie ?',
+                ].map((q) => (
+                  <Link
+                    key={q}
+                    to="/assistant"
+                    className="flex items-start gap-2 p-2 border border-border rounded hover:bg-muted/50 transition-colors"
+                  >
+                    <span className="w-[5px] h-[5px] rounded-full bg-destructive shrink-0 mt-1" />
+                    <span className="text-xs leading-snug">{q}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Offices en cours */}
+          <div className="border border-border rounded-md overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border">
+              <span className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground">
+                Offices en cours
+              </span>
+              <Link to="/offices" className="text-[11px] text-destructive hover:underline">Voir tout →</Link>
+            </div>
+            {officesActifs.slice(0, 4).map((o) => {
+              const v = o.statut === 'en_retard' ? 'overdue' : o.statut === 'retour_partiel' ? 'pending' : 'info';
+              const label = o.statut === 'en_retard' ? 'En retard' : o.statut === 'retour_partiel' ? 'Partiel' : 'En attente';
+              return (
+                <Link
+                  key={o.id}
+                  to={`/offices/${o.id}`}
+                  className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">{o.reference}</div>
+                    <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                      {o.distributeur.nom} · retour {dateFr(o.date_retour_limite)}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="mb-1"><StatusBadge variant={v}>{label}</StatusBadge></div>
+                    <div className="font-mono text-[11.5px] font-medium" style={v === 'overdue' ? { color: 'hsl(var(--destructive))' } : {}}>
+                      {euroFull(o.montant_net)}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Prochaines échéances */}
+          {prochaines.length > 0 && (
+            <div className="border border-border rounded-md overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border">
+                <span className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground">
+                  Échéances imminentes
+                </span>
+                <Link to="/lettres" className="text-[11px] text-destructive hover:underline">Voir tout →</Link>
+              </div>
+              {prochaines.slice(0, 4).map((l) => {
+                const isToday = l.jours_restants === 0;
+                const label   = isToday ? "Aujourd'hui" : `${l.jours_restants}j`;
+                return (
+                  <Link
+                    key={l.id}
+                    to={`/lettres/${l.id}`}
+                    className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
+                    style={l.jours_restants <= 2 ? { background: 'var(--pending-bg)' } : {}}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-[10.5px] text-muted-foreground">{l.reference}</div>
+                      <div className="text-xs font-medium mt-0.5">{l.distributeur.nom}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-mono text-[11.5px] font-medium">{euroFull(l.montant_ttc)}</div>
+                      <div className="mt-0.5">
+                        <StatusBadge variant={l.jours_restants <= 2 ? 'overdue' : 'pending'}>{label}</StatusBadge>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+        </div>
       </div>
-
-      {/* ── Prochaines échéances ────────────────────────────── */}
-      {prochaines.length > 0 && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-warning" />
-              Prochaines échéances
-            </CardTitle>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/lettres">Tout voir</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Référence</TableHead>
-                  <TableHead>Fournisseur</TableHead>
-                  <TableHead className="text-right">Montant TTC</TableHead>
-                  <TableHead className="text-right">Échéance</TableHead>
-                  <TableHead className="text-center">Urgence</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {prochaines.map((l) => {
-                  const isToday  = l.jours_restants === 0;
-                  const isUrgent = l.jours_restants <= 2;
-                  const label    = isToday ? "Aujourd'hui" : `${l.jours_restants}j`;
-                  const urgClass = isUrgent || isToday
-                    ? 'bg-destructive/10 text-destructive'
-                    : l.jours_restants <= 5
-                    ? 'bg-warning/10 text-warning'
-                    : 'bg-success/10 text-success';
-                  return (
-                    <TableRow
-                      key={l.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/lettres/${l.id}`)}
-                    >
-                      <TableCell>
-                        <Link
-                          className="font-mono text-xs text-primary hover:underline"
-                          to={`/lettres/${l.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {l.reference}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{l.distributeur.nom}</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">{euro(l.montant_ttc)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground text-sm">{dateFr(l.date_echeance)}</TableCell>
-                      <TableCell className="text-center">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${urgClass}`}>
-                          {label}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
 
     </AppLayout>
   );

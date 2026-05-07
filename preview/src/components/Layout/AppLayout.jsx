@@ -17,7 +17,8 @@ export function AppLayout({ title, children }) {
   useEffect(() => { window.__toast = addToast; }, []);
 
   useEffect(() => {
-    document.body.classList.toggle('dark', config.theme_dark);
+    /* Pas de dark mode — DA "La Une" est light only */
+    document.body.classList.remove('dark');
     if (title) document.title = `${title} — ${config.nom_librairie}`;
   }, [title]);
 
