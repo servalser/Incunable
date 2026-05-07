@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Palette light ── */
+    --background:   0 0% 98%;
+    --foreground:   240 10% 3.9%;
+
+    --card:         0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover:      0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary:      221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary:    240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted:        240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent:       240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive:  0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success:      142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning:      38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border:       240 5.9% 90%;
+    --input:        240 5.9% 90%;
+    --ring:         221 83% 53%;
+
+    --radius: 0.5rem;
+
+    /* ── Sidebar (dark navy) ── */
+    --sidebar-background:         222 47% 10%;
+    --sidebar-foreground:         213 31% 80%;
+    --sidebar-primary:            221 83% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent:             222 47% 16%;
+    --sidebar-accent-foreground:  213 31% 96%;
+    --sidebar-border:             222 47% 14%;
+    --sidebar-ring:               221 83% 53%;
+  }
+
+  .dark {
+    --background:   222 47% 6%;
+    --foreground:   213 31% 91%;
+
+    --card:         222 47% 9%;
+    --card-foreground: 213 31% 91%;
+
+    --popover:      222 47% 9%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary:      221 83% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary:    222 47% 14%;
+    --secondary-foreground: 213 31% 91%;
+
+    --muted:        222 47% 14%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent:       222 47% 14%;
+    --accent-foreground: 213 31% 91%;
+
+    --destructive:  0 63% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success:      142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning:      38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border:       222 47% 16%;
+    --input:        222 47% 16%;
+    --ring:         221 83% 60%;
+  }
+
+  * { @apply border-border; box-sizing: border-box; }
+
+  html { font-size: 16px; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* ── Scrollbar fine ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/40; }
+
+/* ── Layout global ── */
+.layout-shell {
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.layout-main {
+  flex: 1;
+  overflow-y: auto;
+  @apply bg-background;
+}
+
+.layout-content {
+  padding: 1.5rem 2rem;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Mono font utilitaire ── */
+.font-mono { font-family: 'JetBrains Mono', monospace; }
