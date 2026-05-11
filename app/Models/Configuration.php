@@ -16,6 +16,8 @@ class Configuration extends Model
         'seuil_alerte_stock_global', 'delai_nouveautes_semaines',
         // Intégration LibriWeb (optionnelle, activée par le client)
         'libriweb_actif', 'libriweb_url', 'libriweb_client_id', 'libriweb_api_key',
+        // Benchmark réseau (opt-in — statistiques anonymisées partagées avec le réseau Incunable)
+        'benchmark_actif', 'benchmark_token', 'benchmark_derniere_sync', 'benchmark_donnees',
         'alerte_7j', 'alerte_1j', 'alerte_retard',
         'alerte_retour_expiration', 'alerte_recap_hebdo',
         'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password',
@@ -27,6 +29,9 @@ class Configuration extends Model
     {
         return [
             'libriweb_actif'          => 'boolean',
+            'benchmark_actif'         => 'boolean',
+            'benchmark_donnees'       => 'array',
+            'benchmark_derniere_sync' => 'datetime',
             'alerte_7j'               => 'boolean',
             'alerte_1j'               => 'boolean',
             'alerte_retard'           => 'boolean',

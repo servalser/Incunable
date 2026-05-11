@@ -38,6 +38,14 @@ Schedule::command('import:librisoft')
     ->runInBackground()         // Ne bloque pas les autres tâches planifiées
     ->appendOutputTo(storage_path('logs/import-librisoft.log'));
 
+// ── Benchmark réseau — synchronisation hebdomadaire ──────────────────────────
+// Envoie des statistiques anonymisées au hub Incunable et stocke l'agrégat réseau.
+// Exécuté chaque lundi à 3h pour que les données soient fraîches en semaine.
+Schedule::command('benchmark:synchroniser')
+    ->weeklyOn(1, '03:00')        // Lundi à 3h du matin
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/benchmark.log'));
+
 // ── Nettoyage des archives d'import (> 90 jours) ─────────────────────────────
 // Évite d'accumuler des CSV anciens sur le disque.
 Schedule::call(function () {

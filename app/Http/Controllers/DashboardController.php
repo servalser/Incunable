@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Budget;
 use App\Models\Configuration;
 use App\Models\Lettre;
 use App\Models\Office;
@@ -180,6 +181,9 @@ class DashboardController extends Controller
                 ]);
         }
 
+        // ── Budget du mois en cours ──────────────────────────────
+        $budgetMois = $this->getBudgetMois();
+
         // ── Données graphiques (12 mois) ──────────────────────
         $lookback = max($config->delai_commandes_mois, $config->delai_offices_mois);
         $chartData = $this->getChargeParMois(12, $lookback);
@@ -203,6 +207,7 @@ class DashboardController extends Controller
                 'en_retard'      => round($enRetard, 2),
                 'offices_alerte' => $officesAlerte,
             ],
+            'budget_mois'    => $budgetMois,
             'prochaines'     => $prochaines,
             'alertes_retard' => $alertesRetard,
             'alertes_proches'=> $alertesProches,
@@ -215,6 +220,54 @@ class DashboardController extends Controller
             'top5_produits'     => $top5Produits,
             'produits_dormants' => $produitsDormants,
         ]);
+    }
+
+    /**
+     * Calcule le résumé budgétaire du mois en cours.
+     * Retourne null si aucun budget n'est défini ce mois.
+     */
+    private function getBudgetMois(): ?array
+    {
+        $lignes = Budget::periode(now()->year, now()->month)->get();
+
+        if ($lignes->isEmpty()) {
+            return null;
+        }
+
+        $totalPrevu = $lignes->sum('montant_prevu');
+        $totalReel  = $lignes->sum('montant_reel');  // null = non renseigné
+        $restant    = $totalPrevu - $totalReel;
+
+        // Progression du mois (quel % du mois est passé ?)
+        $joursMois    = now()->daysInMonth;
+        $joursEcoules = now()->day;
+        $progressionMois = round($joursEcoules / $joursMois * 100);
+
+        // Progression budget consommé
+        $progressionBudget = $totalPrevu > 0
+            ? round($totalReel / $totalPrevu * 100, 1)
+            : 0;
+
+        // Détail par catégorie
+        $categories = $lignes->map(fn($b) => [
+            'categorie'    => $b->categorie,
+            'prevu'        => $b->montant_prevu,
+            'reel'         => $b->montant_reel,
+            'restant'      => $b->montant_prevu - ($b->montant_reel ?? 0),
+            'pourcent'     => $b->montant_prevu > 0
+                ? round(($b->montant_reel ?? 0) / $b->montant_prevu * 100, 1)
+                : 0,
+        ])->toArray();
+
+        return [
+            'total_prevu'        => round($totalPrevu, 2),
+            'total_reel'         => round($totalReel, 2),
+            'restant'            => round($restant, 2),
+            'progression_mois'   => $progressionMois,
+            'progression_budget' => $progressionBudget,
+            'categories'         => $categories,
+            'mois_label'         => now()->locale('fr')->isoFormat('MMMM YYYY'),
+        ];
     }
 
     private function getChargeParMois(int $nbMois, int $lookback): array

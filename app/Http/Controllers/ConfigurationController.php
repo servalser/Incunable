@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Configuration;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,6 +40,8 @@ class ConfigurationController extends Controller
             'libriweb_url'               => ['nullable', 'url', 'max:255'],
             'libriweb_client_id'         => ['nullable', 'string', 'max:100'],
             'libriweb_api_key'           => ['nullable', 'string', 'max:255'],
+            // Benchmark réseau
+            'benchmark_actif'            => ['boolean'],
             // Alertes email
             'alerte_7j'               => ['boolean'],
             'alerte_1j'               => ['boolean'],
@@ -63,5 +66,37 @@ class ConfigurationController extends Controller
 
         return redirect()->route('configuration.index')
             ->with('success', 'Configuration enregistrée.');
+    }
+
+    /**
+     * Déclenche manuellement une synchronisation du benchmark réseau.
+     * Appelé via POST /configuration/benchmark/synchroniser (bouton dans l'UI).
+     */
+    public function synchroniserBenchmark(): \Illuminate\Http\RedirectResponse
+    {
+        abort_unless(auth()->user()->role === 'admin', 403);
+
+        $config = Configuration::get();
+
+        if (! $config->benchmark_actif) {
+            return back()->with('error', 'Activez le benchmark réseau avant de synchroniser.');
+        }
+
+        // Lance la commande synchroniquement (timeout HTTP géré dans la commande)
+        $exitCode = Artisan::call('benchmark:synchroniser');
+
+        if ($exitCode === 0) {
+            $config->refresh();
+            $participants = $config->benchmark_donnees['meta']['participants'] ?? 1;
+            $source       = $config->benchmark_donnees['meta']['source'] ?? 'réseau';
+
+            $msg = $source === 'local'
+                ? 'Synchronisation effectuée (données locales — hub en cours de déploiement).'
+                : "Benchmark synchronisé — {$participants} librairie(s) dans le réseau.";
+
+            return back()->with('success', $msg);
+        }
+
+        return back()->with('error', 'La synchronisation a échoué. Consultez les logs pour plus de détails.');
     }
 }

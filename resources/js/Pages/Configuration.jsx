@@ -19,8 +19,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Head, useForm }       from '@inertiajs/react';
-import { AppLayout }           from '../Components/Layout/AppLayout';
+import { Head, useForm, router } from '@inertiajs/react';
+import { AppLayout }             from '../Components/Layout/AppLayout';
 
 /* ──────────────────────────────────────────────────────────────────────────────
  * Toggle — interrupteur on/off accessible
@@ -74,9 +74,200 @@ function FErr({ msg }) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
+ * BenchmarkCard — Carte "Benchmark réseau Incunable"
+ *
+ * Permet à l'admin d'activer le partage de statistiques anonymisées avec le
+ * réseau des librairies Incunable. En retour, le Conseiller IA reçoit l'agrégat
+ * réseau pour comparer les indicateurs de la librairie à ses pairs.
+ *
+ * Données partagées : distribution genres, EANs présents, taux de rupture.
+ * Données JAMAIS partagées : nom, adresse, SIRET, montants exacts, emails.
+ * ────────────────────────────────────────────────────────────────────────────── */
+function BenchmarkCard({ config, data, setData }) {
+    const [syncing, setSyncing] = useState(false);
+
+    /* Déclenche la synchronisation manuelle via Inertia POST */
+    const synchroniser = () => {
+        if (syncing) return;
+        setSyncing(true);
+        router.post(
+            '/configuration/benchmark/synchroniser',
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setSyncing(false),
+            }
+        );
+    };
+
+    /* Informations du dernier benchmark reçu */
+    const b            = config.benchmark_donnees;
+    const participants = b?.meta?.participants ?? null;
+    const majDate      = b?.meta?.mis_a_jour   ?? null;
+    const sourceLocal  = b?.meta?.source === 'local';
+
+    /* Formatage de la date de dernière synchro */
+    const derniereSync = config.benchmark_derniere_sync
+        ? new Date(config.benchmark_derniere_sync).toLocaleDateString('fr-FR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+          })
+        : null;
+
+    return (
+        <div className="card">
+            <div className="card-head">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <h2 className="section-title" style={{ margin: 0 }}>
+                        Benchmark réseau Incunable
+                    </h2>
+                    <Toggle
+                        id="benchmark_actif"
+                        checked={data.benchmark_actif}
+                        onChange={v => setData('benchmark_actif', v)}
+                    />
+                </div>
+            </div>
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Description */}
+                <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+                    Partagez des statistiques <strong style={{ color: 'var(--ink)' }}>anonymisées</strong> de votre
+                    catalogue avec le réseau des librairies Incunable. En échange, le{' '}
+                    <a href="/assistant" style={{ color: 'var(--accent)' }}>Conseiller IA</a>{' '}
+                    reçoit l'agrégat réseau et peut comparer vos indicateurs à ceux de librairies similaires
+                    (taux de rupture, genres populaires, titres tendance).
+                </p>
+
+                {/* Données partagées / non partagées */}
+                <div style={{
+                    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+                    fontSize: 12.5,
+                }}>
+                    <div style={{
+                        background: '#f0fdf4', border: '1px solid #bbf7d0',
+                        borderRadius: 6, padding: '10px 14px',
+                    }}>
+                        <div style={{ fontWeight: 600, color: '#166534', marginBottom: 4 }}>
+                            ✓ Ce qui est partagé
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 16, color: '#15803d', lineHeight: 1.8 }}>
+                            <li>Distribution des genres du catalogue</li>
+                            <li>Codes EAN (ISBN) présents en stock</li>
+                            <li>Taux de rupture et niveau de stock moyen</li>
+                            <li>Nombre de distributeurs actifs</li>
+                        </ul>
+                    </div>
+                    <div style={{
+                        background: '#fff7ed', border: '1px solid #fed7aa',
+                        borderRadius: 6, padding: '10px 14px',
+                    }}>
+                        <div style={{ fontWeight: 600, color: '#9a3412', marginBottom: 4 }}>
+                            ✗ Jamais partagé
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 16, color: '#c2410c', lineHeight: 1.8 }}>
+                            <li>Nom, adresse, SIRET de la librairie</li>
+                            <li>Montants financiers exacts (LCR, offices)</li>
+                            <li>Données personnelles des utilisateurs</li>
+                            <li>Emails, téléphones, contacts</li>
+                        </ul>
+                    </div>
+                </div>
+
+                {/* Statut de la dernière synchronisation */}
+                {data.benchmark_actif && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: 'var(--surface)', border: '1px solid var(--hairline)',
+                        borderRadius: 6, padding: '12px 16px',
+                    }}>
+                        <div>
+                            {b ? (
+                                <>
+                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+                                        {sourceLocal
+                                            ? 'Données locales (hub en cours de déploiement)'
+                                            : `${participants} librairie${participants > 1 ? 's' : ''} dans le réseau`
+                                        }
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                                        Dernière synchronisation : {derniereSync ?? 'inconnue'}
+                                        {majDate && ` · Données du ${majDate}`}
+                                    </div>
+
+                                    {/* Aperçu des métriques réseau */}
+                                    {b.stock && !sourceLocal && (
+                                        <div style={{
+                                            marginTop: 10, display: 'flex', gap: 16,
+                                            flexWrap: 'wrap', fontSize: 12.5,
+                                        }}>
+                                            {b.stock.stock_moyen_reseau != null && (
+                                                <span style={{
+                                                    background: 'var(--bg)', border: '1px solid var(--hairline)',
+                                                    borderRadius: 4, padding: '3px 8px', color: 'var(--muted)',
+                                                }}>
+                                                    Stock moyen réseau : <strong style={{ color: 'var(--ink)' }}>
+                                                        {b.stock.stock_moyen_reseau} ex./titre
+                                                    </strong>
+                                                </span>
+                                            )}
+                                            {b.stock.taux_rupture_moyen != null && (
+                                                <span style={{
+                                                    background: 'var(--bg)', border: '1px solid var(--hairline)',
+                                                    borderRadius: 4, padding: '3px 8px', color: 'var(--muted)',
+                                                }}>
+                                                    Taux de rupture réseau : <strong style={{ color: 'var(--ink)' }}>
+                                                        {b.stock.taux_rupture_moyen}%
+                                                    </strong>
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                                    Jamais synchronisé — cliquez sur "Synchroniser" pour démarrer.
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            type="button"
+                            className="btn secondary"
+                            onClick={synchroniser}
+                            disabled={syncing}
+                            style={{ whiteSpace: 'nowrap', marginLeft: 12 }}
+                        >
+                            {syncing ? 'Synchronisation…' : 'Synchroniser'}
+                        </button>
+                    </div>
+                )}
+
+                {/* Note token anonyme */}
+                {data.benchmark_actif && config.benchmark_token && (
+                    <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                        Identifiant anonyme de cette instance :{' '}
+                        <code style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                            {config.benchmark_token}
+                        </code>
+                        {' '}— généré automatiquement, ne contient aucune donnée personnelle.
+                    </p>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+                    <button type="submit" className="btn primary" disabled={false}>
+                        Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
  * Page principale
  * ────────────────────────────────────────────────────────────────────────────── */
-export default function Configuration({ config }) {
+export default function Configuration({ config, benchmarkSyncing }) {
     /* Onglet actif — géré localement */
     const [tab, setTab] = useState('librairie');
 
@@ -115,6 +306,7 @@ export default function Configuration({ config }) {
         libriweb_url:       config.libriweb_url        ?? '',
         libriweb_client_id: config.libriweb_client_id ?? '',
         libriweb_api_key:   config.libriweb_api_key    ?? '',
+        benchmark_actif:    config.benchmark_actif    ?? false,
 
         /* Onglet 5 — Apparence */
         theme_hue:  config.theme_hue  ?? 220,
@@ -624,6 +816,10 @@ export default function Configuration({ config }) {
                                 <SaveBtn />
                             </div>
                         </div>
+
+                        {/* ── Benchmark réseau ──────────────────────── */}
+                        <BenchmarkCard config={config} data={data} setData={setData} />
+
                     </div>
                 )}
 

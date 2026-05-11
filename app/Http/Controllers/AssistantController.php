@@ -7,6 +7,7 @@ use App\Models\Distributeur;
 use App\Models\FicheMission;
 use App\Models\Lettre;
 use App\Models\Office;
+use App\Models\Produit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -140,6 +141,116 @@ class AssistantController extends Controller
         ];
     }
 
+    // ── Section benchmark réseau (injectée dans le prompt si disponible) ─────
+
+    private function buildBenchmarkSection(Configuration $config): string
+    {
+        // Pas de données → section vide, pas de texte inutile dans le prompt
+        if (! $config->benchmark_actif || ! $config->benchmark_donnees) {
+            return '';
+        }
+
+        $b            = $config->benchmark_donnees;
+        $meta         = $b['meta']     ?? [];
+        $stockReseau  = $b['stock']    ?? [];
+        $finReseau    = $b['financier'] ?? [];
+
+        $participants = $meta['participants'] ?? 1;
+        $majDate      = $meta['mis_a_jour']   ?? 'inconnue';
+        $sourceLabel  = ($meta['source'] ?? 'réseau') === 'local'
+            ? 'données locales uniquement'
+            : "{$participants} librairie(s) participante(s)";
+
+        // ── Statistiques locales pour comparaison ─────────────────────────────
+        $produits    = Produit::actif()->get();
+        $totalLocal  = $produits->count();
+
+        $stockMoyenLocal  = $totalLocal > 0 ? round($produits->avg('stock_physique'), 2) : 0;
+        $enRuptureLocal   = $totalLocal > 0 ? $produits->where('stock_physique', '<=', 0)->count() : 0;
+        $tauxRuptureLocal = $totalLocal > 0 ? round($enRuptureLocal / $totalLocal * 100, 1) : 0;
+
+        // ── Réseau ────────────────────────────────────────────────────────────
+        $stockMoyenReseau  = $stockReseau['stock_moyen_reseau']  ?? null;
+        $tauxRuptureReseau = $stockReseau['taux_rupture_moyen']  ?? null;
+
+        // ── Comparaisons (delta en %) ─────────────────────────────────────────
+        $deltaStock   = $stockMoyenReseau  ? $stockMoyenLocal  - $stockMoyenReseau  : null;
+        $deltaRupture = $tauxRuptureReseau ? $tauxRuptureLocal - $tauxRuptureReseau : null;
+
+        $stockCompa   = $this->signeCompa($deltaStock);
+        $ruptureCompa = $this->signeCompa($deltaRupture, inverse: true); // élevé = mauvais
+
+        // ── Genres réseau ─────────────────────────────────────────────────────
+        $genresReseau = $stockReseau['genres'] ?? [];
+        $genresLocaux = $produits->whereNotNull('genre')
+            ->groupBy('genre')
+            ->map(fn($g) => round($g->count() / max($totalLocal, 1) * 100))
+            ->sortDesc();
+
+        $genresLines = '';
+        foreach ($genresReseau as $genre => $data) {
+            $partReseau = $data['part_pourcent'] ?? 0;
+            $partLocal  = $genresLocaux[$genre] ?? 0;
+            $diff       = $partLocal - $partReseau;
+            $flag       = abs($diff) >= 10 ? ($diff > 0 ? ' ↑' : ' ↓') : '';
+            $genresLines .= "  - {$genre} : réseau {$partReseau}% | vous {$partLocal}%{$flag}\n";
+        }
+
+        // ── EANs populaires manquants dans le catalogue local ─────────────────
+        $eansPopulaires  = $stockReseau['eans_populaires'] ?? [];
+        $eansLocaux      = Produit::actif()->whereNotNull('ean')->pluck('ean')->toArray();
+
+        $manquants = array_filter($eansPopulaires, function ($item) use ($eansLocaux) {
+            return ! in_array($item['ean'] ?? '', $eansLocaux, true)
+                && ($item['present_chez_pourcent'] ?? 0) >= 70;
+        });
+
+        $manquantsLines = '';
+        foreach (array_slice($manquants, 0, 5) as $item) {
+            $titre     = $item['titre']                   ?? $item['ean'];
+            $presence  = $item['present_chez_pourcent']   ?? '?';
+            $stockMoy  = isset($item['stock_moyen']) ? " (stock moyen réseau : {$item['stock_moyen']} ex.)" : '';
+            $manquantsLines .= "  - {$titre} ({$item['ean']}) — présent chez {$presence}% du réseau{$stockMoy}\n";
+        }
+
+        // ── Construction de la section texte ──────────────────────────────────
+        $section  = "\n=== BENCHMARK RÉSEAU INCUNABLE ({$sourceLabel}, màj : {$majDate}) ===\n";
+
+        if ($stockMoyenReseau !== null) {
+            $section .= "Stock moyen par titre : réseau {$stockMoyenReseau} ex. | vous {$stockMoyenLocal} ex. {$stockCompa}\n";
+        }
+        if ($tauxRuptureReseau !== null) {
+            $section .= "Taux de rupture : réseau {$tauxRuptureReseau}% | vous {$tauxRuptureLocal}% {$ruptureCompa}\n";
+        }
+
+        if ($genresLines) {
+            $section .= "Répartition genres (réseau vs vous) :\n{$genresLines}";
+        }
+
+        if ($manquantsLines) {
+            $section .= "Titres populaires du réseau absents de votre catalogue (≥70% des librairies) :\n{$manquantsLines}";
+        }
+
+        return $section;
+    }
+
+    /**
+     * Retourne un indicateur textuel selon le signe du delta.
+     * Si $inverse = true, un delta positif est une mauvaise nouvelle (ex: taux de rupture).
+     */
+    private function signeCompa(?float $delta, bool $inverse = false): string
+    {
+        if ($delta === null) return '';
+        if (abs($delta) < 0.3) return '≈ dans la moyenne';
+
+        $positif = $delta > 0;
+        if ($inverse) $positif = ! $positif;
+
+        return $positif
+            ? sprintf('✓ (+%.1f)', abs($delta))
+            : sprintf('⚠ (%.1f)', -abs($delta));
+    }
+
     // ── System prompt complet avec toutes les données de la BDD ──────────────
 
     private function buildSystemPrompt(): string
@@ -211,8 +322,12 @@ class AssistantController extends Controller
             . ($f->notes ? " — {$f->notes}" : '')
         )->join("\n");
 
+        // ── Benchmark réseau (si disponible) ─────────────────────────────────
+        $benchmarkSection = $this->buildBenchmarkSection($config);
+
         return <<<PROMPT
-Tu es un conseiller financier expert en gestion de librairie indépendante française.
+Tu es un conseiller expert en gestion de librairie manga et culture japonaise (BD japonaise, light novels, figurines, goodies).
+Tu connais les spécificités du marché du manga en France : rythme de parution soutenu, forte saisonnalité (rentrée, Noël, Japan Expo), importance du suivi des séries en cours, gestion des tomes manquants, et sensibilité des lecteurs aux ruptures.
 Tu as accès à l'intégralité de la base de données de la librairie en temps réel.
 Date du jour : {$mois}
 Librairie : {$config->nom_librairie}
@@ -232,12 +347,14 @@ Détail :
 
 === FICHES MISSIONS ({$fiches->count()}) ===
 {$fichesSection}
-
+{$benchmarkSection}
 === RÈGLES DE RÉPONSE ===
 - Réponds toujours en français, de façon concise et professionnelle.
 - Utilise les données ci-dessus pour personnaliser précisément tes conseils (cite les références, les montants, les distributeurs).
 - Si une info manque, demande une précision.
-- Priorités de conseil : LCR en retard > offices en retard > LCR à venir proche.
+- Priorités de conseil : LCR en retard > offices en retard > LCR à venir proche > ruptures sur séries populaires.
+- Quand le benchmark réseau est disponible, compare les indicateurs de cette librairie au réseau et mentionne les écarts significatifs (> 20%).
+- Pour le manga : signale les tomes manquants dans une série, alerte sur les parutions à venir de séries à fort tirage, et recommande les réassorts sur les shonen populaires.
 PROMPT;
     }
 }

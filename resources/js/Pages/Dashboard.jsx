@@ -14,7 +14,7 @@
 import { Head, Link, router }                       from '@inertiajs/react';
 import { useState, useRef, useEffect }              from 'react';
 import { motion, AnimatePresence }                  from 'framer-motion';
-import { Lightbulb, Package, X,
+import { Lightbulb, Package, X, Wallet,
          TrendingUp, TrendingDown, Minus,
          ArrowRight, RotateCcw, Check }             from 'lucide-react';
 import { AppLayout }                               from '../Components/Layout/AppLayout';
@@ -561,8 +561,126 @@ function WidgetQuestions() {
 
 const DEFAULT_WIDGETS = { kpis: true, alerts: true, chart: true, suppliers: true, deadlines: true };
 
+/* ── Widget Budget Mensuel (affiché en priorité en haut du dashboard) ───── */
+function BudgetWidget({ budget }) {
+    if (!budget) return null;
+
+    const { total_prevu, total_reel, restant, progression_mois, progression_budget, categories, mois_label } = budget;
+    const depasse = restant < 0;
+    const alerte  = progression_budget > progression_mois + 15; // consommation > avancement du mois + marge
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.2, 0.7, 0.2, 1] }}
+            style={{ marginBottom: 24 }}
+        >
+            <div className={`card${depasse ? ' tone-alert' : ''}`} style={{
+                border: depasse ? '1.5px solid var(--status-overdue)' : alerte ? '1.5px solid var(--status-pending)' : undefined,
+            }}>
+                <div className="card-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                        <Wallet size={16} />
+                        Budget — <span style={{ textTransform: 'capitalize' }}>{mois_label}</span>
+                    </h2>
+                    <Link href="/budget" className="btn ghost sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        Détails <ArrowRight size={12} />
+                    </Link>
+                </div>
+                <div className="card-body" style={{ padding: '16px 20px' }}>
+                    {/* Résumé principal */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 16 }}>
+                        <div>
+                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Budget prévu</div>
+                            <div className="mono" style={{ fontSize: 20, fontWeight: 600, color: 'var(--ink)' }}>
+                                {euro(total_prevu)}
+                            </div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Dépensé</div>
+                            <div className="mono" style={{ fontSize: 20, fontWeight: 600, color: alerte ? 'var(--status-pending)' : 'var(--ink)' }}>
+                                {euro(total_reel)}
+                            </div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
+                                {depasse ? 'Dépassement' : 'Restant'}
+                            </div>
+                            <div className="mono" style={{
+                                fontSize: 22, fontWeight: 700,
+                                color: depasse ? 'var(--status-overdue)' : 'var(--status-paid)',
+                            }}>
+                                {depasse ? '+' : ''}{euro(Math.abs(restant))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Barre de progression */}
+                    <div style={{ position: 'relative', height: 10, borderRadius: 6, background: 'var(--surface-2)', overflow: 'hidden' }}>
+                        {/* Barre consommation budget */}
+                        <div style={{
+                            position: 'absolute', top: 0, left: 0, height: '100%',
+                            width: `${Math.min(progression_budget, 100)}%`,
+                            background: depasse ? 'var(--status-overdue)' : alerte ? 'var(--status-pending)' : 'var(--accent)',
+                            borderRadius: 6,
+                            transition: 'width .4s ease',
+                        }} />
+                        {/* Marqueur avancement du mois */}
+                        <div style={{
+                            position: 'absolute', top: -2, height: 14,
+                            left: `${progression_mois}%`,
+                            width: 2, background: 'var(--ink)', opacity: 0.4,
+                            borderRadius: 1,
+                        }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                        <span>{progression_budget}% du budget consommé</span>
+                        <span>{progression_mois}% du mois écoulé</span>
+                    </div>
+
+                    {/* Détail par catégorie */}
+                    {categories && categories.length > 0 && (
+                        <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {categories.map((c, i) => (
+                                <div key={i} style={{
+                                    flex: '1 1 calc(50% - 8px)', minWidth: 180,
+                                    padding: '8px 12px', borderRadius: 6,
+                                    border: '1px solid var(--hairline)',
+                                    background: 'var(--surface)',
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink)' }}>
+                                            {c.categorie}
+                                        </span>
+                                        <span className="mono" style={{
+                                            fontSize: 12,
+                                            color: c.restant < 0 ? 'var(--status-overdue)' : 'var(--muted)',
+                                        }}>
+                                            {euro(c.restant)}
+                                        </span>
+                                    </div>
+                                    <div style={{ height: 4, borderRadius: 2, background: 'var(--surface-2)' }}>
+                                        <div style={{
+                                            height: '100%', borderRadius: 2,
+                                            width: `${Math.min(c.pourcent, 100)}%`,
+                                            background: c.pourcent > 90 ? 'var(--status-overdue)' : c.pourcent > 70 ? 'var(--status-pending)' : 'var(--accent)',
+                                            transition: 'width .3s ease',
+                                        }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
 export default function Dashboard({
     stats,
+    budget_mois = null,
     prochaines,
     alertes_retard,
     alertes_proches,
@@ -657,6 +775,9 @@ export default function Dashboard({
                     )}
                 </div>
             </div>
+
+            {/* ── Budget mensuel — mis en avant avant tout ── */}
+            <BudgetWidget budget={budget_mois} />
 
             {/* ── KPIs — animés en cascade (stagger) au chargement ── */}
             <Widget id="kpis" style={{ marginBottom: 24 }}>

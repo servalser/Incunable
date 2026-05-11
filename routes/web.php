@@ -81,6 +81,7 @@ Route::middleware('auth')->group(function () {
     // ── Configuration (admin seulement) ──────────────────────────────────────
     Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration.index');
     Route::put('/configuration', [ConfigurationController::class, 'update'])->name('configuration.update');
+    Route::post('/configuration/benchmark/synchroniser', [ConfigurationController::class, 'synchroniserBenchmark'])->name('configuration.benchmark.synchroniser');
 
     // ── Tickets de support ────────────────────────────────────────────────────
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
